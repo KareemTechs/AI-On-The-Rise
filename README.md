@@ -1,6 +1,6 @@
 # AI-On-The-Rise
 
-A collection of AI projects built during my 4-month self-directed learning plan.
+A collection of AI projects built during my self-directed learning plan.
 
 ## Document Summarizer
 Paste any text and get back a structured summary powered by the Claude API.
