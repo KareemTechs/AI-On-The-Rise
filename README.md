@@ -10,40 +10,25 @@ Paste any text and get back a structured summary powered by the Claude API.
 
 **Returns:** One-paragraph summary · Three key points · Sentiment (positive/neutral/negative)
 
-**Example Output:**
-
-SUMMARY
-
-The Amazon rainforest produces 20% of the world's oxygen and houses 10%
-of all species. Deforestation has destroyed 17% of the forest over 50 years...
-
-KEY POINTS
-
-The Amazon produces roughly 20% of the world's oxygen
-17% has been deforested — 25% could trigger an irreversible tipping point
-Conservation efforts exist, but enforcement remains inconsistent
-
-SENTIMENT
-
-🔴 negative
-
+---
 
 ### 🃏 Flashcard Generator
 Enter a topic or paste text and get back 5 question/answer flashcards powered by the Claude API.
 
 **Returns:** 5 flashcards, each with a question and a concise answer
 
-**Example Output:**
+---
 
-Card 1
+### 🔍 RAG Document Q&A
+Ask questions about your own documents and get grounded answers powered by Claude and local embeddings.
 
-Q: What is the fundamental difference between supervised and unsupervised learning?
-A: Supervised learning uses labeled data with correct answers, while unsupervised
-learning finds patterns in unlabeled data on its own.
+**Returns:** A concise answer drawn only from retrieved document chunks · A grounded flag confirming whether the answer came from the provided context
 
 ---
 
 ## How to Run Any Project
-1. Install dependencies: `pip install anthropic python-dotenv`
-2. Create a `.env` file: `ANTHROPIC_API_KEY=your-key-here`
-3. Open the relevant `.ipynb` file in Jupyter and run all cells
+1. Install core dependencies: `pip install anthropic python-dotenv`
+2. For the RAG system also install: `pip install chromadb sentence-transformers`
+3. Create a `.env` file: `ANTHROPIC_API_KEY=your-key-here`
+4. Open the relevant `.ipynb` file in Jupyter and run all cells
+5. For the RAG system, place your `.txt` files in a `news_articles/` folder inside `rag-system/` before running
