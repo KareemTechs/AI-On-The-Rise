@@ -1,5 +1,5 @@
 # AI-On-The-Rise
-A collection of AI projects built during my self-directed learning plan.
+A collection of AI projects built during my summer to become an AI genius.
 
 ---
 
