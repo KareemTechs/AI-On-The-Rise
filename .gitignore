@@ -1,4 +1,4 @@
 .env
 chroma_persistent_storage/
 .DS_Store
-.DS_Store
+__pycache__/
