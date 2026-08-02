@@ -26,8 +26,6 @@ Ask questions about your own documents and get grounded answers powered by Claud
 
 ---
 
----
-
 ### 🛡️ GlutenGuard — Celiac Food Label Scanner
 An AI-assisted food label scanner for people with celiac disease that analyzes a label photo or pasted ingredient list and returns a plain-language safety verdict powered by the Claude API.
 
