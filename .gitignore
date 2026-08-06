@@ -2,3 +2,4 @@
 chroma_persistent_storage/
 .DS_Store
 __pycache__/
+RecallRadar/data/
