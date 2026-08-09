@@ -5,3 +5,4 @@ anthropic
 python-dotenv
 pydantic
 rapidfuzz
+streamlit

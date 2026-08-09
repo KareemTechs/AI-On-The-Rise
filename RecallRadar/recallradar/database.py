@@ -1,7 +1,7 @@
-"""SQLite storage for recalls, their extracted product identifiers, household inventory, and
-which alerts have already been sent.
+"""SQLite storage for recalls, their extracted product identifiers, household inventory,
+which alerts have already been sent, and when the pipeline last ran.
 
-Four tables, matching the design in DESIGN.md:
+Five tables, matching the design in DESIGN.md:
   - recalls: one row per NID, deduplicated on insert (INSERT OR IGNORE)
   - recall_products: the structured identifiers Claude extracts from each recall's detail
     page (brand, product name, lot numbers, UPC, affected regions) — one-to-many with recalls,
@@ -10,7 +10,13 @@ Four tables, matching the design in DESIGN.md:
   - inventory: household products a user has saved, matched against recalls later
   - sent_alerts: one row per (recall, inventory item) pair that has already produced an alert
     — a UNIQUE constraint on that pair is what makes pipeline.py's repeated runs idempotent
-    (see DESIGN.md step 8: "so the system does not repeatedly send the same alert")
+    (see DESIGN.md step 8: "so the system does not repeatedly send the same alert"). It stores
+    the alert's full rendered content (product/risk/identifiers/action/source/reasoning), not
+    just the priority — this is what lets the dashboard (app.py) display past alerts by reading
+    this table directly, instead of re-running the matching engine (and re-triggering Claude
+    calls) every time someone loads the page.
+  - pipeline_runs: one row per run_pipeline() call, so the dashboard can show "last checked"
+    without guessing at it from other tables' timestamps.
 
 recall_products is a separate table rather than columns on `recalls` because that relationship
 is one-to-many and its presence is inconsistent across recall categories (see DESIGN.md) — most
@@ -61,8 +67,24 @@ CREATE TABLE IF NOT EXISTS sent_alerts (
     recall_nid TEXT NOT NULL REFERENCES recalls(nid),
     inventory_item_id INTEGER NOT NULL REFERENCES inventory(id),
     priority TEXT NOT NULL,
+    headline TEXT,
+    product_line TEXT,
+    risk_line TEXT,
+    identifiers_line TEXT,
+    action_line TEXT,
+    source_line TEXT,
+    match_reasoning TEXT,
     sent_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (recall_nid, inventory_item_id)
+);
+
+CREATE TABLE IF NOT EXISTS pipeline_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ran_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    new_recalls INTEGER,
+    details_extracted INTEGER,
+    alerts_generated INTEGER,
+    alerts_suppressed INTEGER
 );
 """
 
@@ -82,6 +104,14 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE inventory ADD COLUMN upc TEXT")
     if "lot_number" not in existing_inventory_columns:
         conn.execute("ALTER TABLE inventory ADD COLUMN lot_number TEXT")
+
+    existing_sent_alert_columns = {row["name"] for row in conn.execute("PRAGMA table_info(sent_alerts)")}
+    for column in (
+        "headline", "product_line", "risk_line", "identifiers_line",
+        "action_line", "source_line", "match_reasoning",
+    ):
+        if column not in existing_sent_alert_columns:
+            conn.execute(f"ALTER TABLE sent_alerts ADD COLUMN {column} TEXT")
 
 
 def get_connection() -> sqlite3.Connection:
@@ -170,8 +200,12 @@ def was_alert_sent(conn: sqlite3.Connection, recall_nid: str, inventory_item_id:
     return row is not None
 
 
-def record_sent_alert(conn: sqlite3.Connection, recall_nid: str, inventory_item_id: int, priority: str) -> bool:
+def record_sent_alert(conn: sqlite3.Connection, recall_nid: str, inventory_item_id: int, alert) -> bool:
     """Record that an alert was sent for this (recall, inventory item) pair.
+
+    Stores the alert's full rendered content (not just the priority) so the dashboard can
+    display past alerts by reading this table directly — see get_sent_alerts below — without
+    re-running the matching engine (and re-triggering Claude calls) on every page load.
 
     Returns True if this was a new record. INSERT OR IGNORE plus the table's UNIQUE constraint
     on (recall_nid, inventory_item_id) means a second attempt to record the same pair is a
@@ -180,12 +214,50 @@ def record_sent_alert(conn: sqlite3.Connection, recall_nid: str, inventory_item_
     """
     cursor = conn.execute(
         """
-        INSERT OR IGNORE INTO sent_alerts (recall_nid, inventory_item_id, priority)
-        VALUES (?, ?, ?)
+        INSERT OR IGNORE INTO sent_alerts
+            (recall_nid, inventory_item_id, priority, headline, product_line, risk_line,
+             identifiers_line, action_line, source_line, match_reasoning)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (recall_nid, inventory_item_id, priority),
+        (
+            recall_nid,
+            inventory_item_id,
+            alert.priority.value,
+            alert.headline,
+            alert.product_line,
+            alert.risk_line,
+            alert.identifiers_line,
+            alert.action_line,
+            alert.source_line,
+            alert.match_reasoning,
+        ),
     )
     return cursor.rowcount > 0
+
+
+def get_sent_alerts(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Every alert ever sent, newest first — this is what the dashboard's alerts panel reads."""
+    return conn.execute("SELECT * FROM sent_alerts ORDER BY sent_at DESC").fetchall()
+
+
+def record_pipeline_run(conn: sqlite3.Connection, summary: dict) -> None:
+    conn.execute(
+        """
+        INSERT INTO pipeline_runs (new_recalls, details_extracted, alerts_generated, alerts_suppressed)
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            summary["new_recalls"],
+            summary["details_extracted"],
+            summary["alerts_generated"],
+            summary["alerts_suppressed"],
+        ),
+    )
+
+
+def get_last_pipeline_run(conn: sqlite3.Connection) -> sqlite3.Row | None:
+    """The most recent pipeline run, or None if the pipeline has never been run."""
+    return conn.execute("SELECT * FROM pipeline_runs ORDER BY ran_at DESC LIMIT 1").fetchone()
 
 
 if __name__ == "__main__":

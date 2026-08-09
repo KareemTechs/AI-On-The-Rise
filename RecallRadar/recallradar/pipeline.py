@@ -26,6 +26,7 @@ from recallradar.alerts import build_alert
 from recallradar.database import (
     get_connection,
     get_inventory,
+    record_pipeline_run,
     record_sent_alert,
     was_alert_sent,
 )
@@ -68,7 +69,7 @@ def generate_and_record_alerts(conn) -> tuple[int, int]:
             if alert is None:
                 continue  # doesn't qualify for an alert at all — nothing to suppress or send
 
-            was_new = record_sent_alert(conn, recall["nid"], item["id"], alert.priority.value)
+            was_new = record_sent_alert(conn, recall["nid"], item["id"], alert)
             if was_new:
                 generated += 1
             else:
@@ -94,14 +95,18 @@ def run_pipeline() -> dict:
 
     conn = get_connection()
     alerts_generated, alerts_suppressed = generate_and_record_alerts(conn)
-    conn.close()
 
-    return {
+    summary = {
         "new_recalls": new_recalls,
         "details_extracted": details_extracted,
         "alerts_generated": alerts_generated,
         "alerts_suppressed": alerts_suppressed,
     }
+    record_pipeline_run(conn, summary)
+    conn.commit()
+    conn.close()
+
+    return summary
 
 
 if __name__ == "__main__":
