@@ -36,11 +36,23 @@ Run with `streamlit run glutenguard/app.py` from the repo root.
 
 ---
 
+### 📡 RecallRadar — Canadian Product Recall Monitor
+An agentic product-safety monitoring system that checks official Government of Canada recall feeds, matches affected products against a saved household inventory, and generates prioritized alerts powered by Claude.
+
+**Returns:** Confirmed recall alerts · Possible-match warnings · Match confidence and reasoning · Affected UPC/lot · Recommended action · Official government source
+
+**Extra dependencies:** `pip install feedparser requests beautifulsoup4 pydantic rapidfuzz streamlit`
+Run with `streamlit run recallradar/app.py` from the repo root.
+
+---
+
 ## How to Run Any Project
 1. Install core dependencies: `pip install anthropic python-dotenv`
 2. For the RAG system also install: `pip install chromadb sentence-transformers`
 3. For GlutenGuard also install: `pip install streamlit pydantic`
-4. Create a `.env` file: `ANTHROPIC_API_KEY=your-key-here`
-5. Open the relevant `.ipynb` file in Jupyter and run all cells
-6. For the RAG system, place your `.txt` files in a `news_articles/` folder inside `rag-system/` before running
-7. For GlutenGuard, run `streamlit run glutenguard/app.py` from the repo root
+4. For RecallRadar also install: `pip install feedparser requests beautifulsoup4 pydantic rapidfuzz streamlit`
+5. Create a `.env` file: `ANTHROPIC_API_KEY=your-key-here`
+6. Open the relevant `.ipynb` file in Jupyter and run all cells
+7. For the RAG system, place your `.txt` files in a `news_articles/` folder inside `rag-system/` before running
+8. For GlutenGuard, run `streamlit run glutenguard/app.py` from the repo root
+9. For RecallRadar, run `streamlit run recallradar/app.py` from the repo root, or run the pipeline directly with `python -m recallradar.pipeline`
