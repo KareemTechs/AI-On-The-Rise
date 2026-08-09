@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS sent_alerts (
     recall_nid TEXT NOT NULL REFERENCES recalls(nid),
     inventory_item_id INTEGER NOT NULL REFERENCES inventory(id),
     priority TEXT NOT NULL,
+    match_confidence TEXT,
     headline TEXT,
     product_line TEXT,
     risk_line TEXT,
@@ -107,7 +108,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
 
     existing_sent_alert_columns = {row["name"] for row in conn.execute("PRAGMA table_info(sent_alerts)")}
     for column in (
-        "headline", "product_line", "risk_line", "identifiers_line",
+        "match_confidence", "headline", "product_line", "risk_line", "identifiers_line",
         "action_line", "source_line", "match_reasoning",
     ):
         if column not in existing_sent_alert_columns:
@@ -207,6 +208,13 @@ def record_sent_alert(conn: sqlite3.Connection, recall_nid: str, inventory_item_
     display past alerts by reading this table directly — see get_sent_alerts below — without
     re-running the matching engine (and re-triggering Claude calls) on every page load.
 
+    match_confidence is stored separately from priority because priority conflates severity
+    (from the recall's own recall_class) with match confidence (from matching.py's
+    MatchConfidence) — two alerts can share the same priority tier while coming from very
+    different evidence (an exact UPC hit vs. a fuzzy name match), so the dashboard needs the
+    confidence tier on its own to label them correctly instead of collapsing both into the
+    same "Confirmed match" text.
+
     Returns True if this was a new record. INSERT OR IGNORE plus the table's UNIQUE constraint
     on (recall_nid, inventory_item_id) means a second attempt to record the same pair is a
     no-op rather than an error or a duplicate row — this is the actual mechanism that makes
@@ -215,14 +223,15 @@ def record_sent_alert(conn: sqlite3.Connection, recall_nid: str, inventory_item_
     cursor = conn.execute(
         """
         INSERT OR IGNORE INTO sent_alerts
-            (recall_nid, inventory_item_id, priority, headline, product_line, risk_line,
-             identifiers_line, action_line, source_line, match_reasoning)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (recall_nid, inventory_item_id, priority, match_confidence, headline, product_line,
+             risk_line, identifiers_line, action_line, source_line, match_reasoning)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             recall_nid,
             inventory_item_id,
             alert.priority.value,
+            alert.match_confidence.value,
             alert.headline,
             alert.product_line,
             alert.risk_line,

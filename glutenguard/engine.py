@@ -38,6 +38,11 @@ class IngredientFinding(BaseModel):
 class GlutenGuardResult(BaseModel):
     """Structured GlutenGuard classification for one product label."""
 
+    product_name: str = Field(
+        description="The product name as it appears on the label (brand + product, e.g. "
+        "'Kraft Peanut Butter'). If the label text doesn't clearly state a product name, "
+        "give your best short description of what the product is."
+    )
     classification: Literal["Green", "Yellow", "Red"]
     summary: str = Field(description="One to two sentence plain-language explanation")
     ingredient_analysis: list[IngredientFinding]
@@ -89,6 +94,11 @@ SYSTEM_PROMPT = dedent("""
     the specific reasons driving the overall classification. Always include a reminder that the
     user must still verify the package, manufacturer information, and certified gluten-free
     status before consuming — this assessment is not a substitute for that.
+
+    Always identify the product_name from the label or ingredient text (brand + product name
+    if both are visible). This grounds your answer in what you actually read, especially when
+    working from a photo — if no clear product name is stated, give a short honest description
+    of what the product appears to be rather than leaving it vague.
 """).strip()
 
 MANDATORY_REMINDER = (

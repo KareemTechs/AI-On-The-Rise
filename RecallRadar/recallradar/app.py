@@ -41,10 +41,18 @@ from recallradar.pipeline import run_pipeline
 _CONFIRMED_TIERS = {"urgent", "standard"}
 _UNCERTAIN_TIERS = {"low_confidence"}
 
+# Confidence labels are keyed on match_confidence (matching.py's MatchConfidence), not on
+# priority. priority conflates severity with match confidence — an exact UPC hit and a fuzzy
+# 90+ name match can land on the same priority tier despite being very different kinds of
+# evidence, so priority alone can't distinguish them. This previously mislabeled every
+# confirmed-tier alert as "Confirmed match" regardless of which evidence produced it, which is
+# a real safety issue for a recall-alert tool: a fuzzy name match and an exact UPC hit warrant
+# different levels of user trust and different follow-up action (verify the label vs. just act).
 _CONFIDENCE_LABEL = {
-    "urgent": "Confirmed match",
-    "standard": "Confirmed match",
-    "low_confidence": "Possible match — unconfirmed",
+    "exact_id": "Confirmed match",
+    "claude_confirmed": "Likely match — verify identifiers",
+    "fuzzy_auto": "Strong name match — verify identifiers",
+    "claude_uncertain": "Possible match — unconfirmed",
 }
 
 _ALERT_RENDERER = {
@@ -62,7 +70,7 @@ def render_alert(alert_row: dict) -> None:
         renderer(alert_row["headline"])
         st.markdown(f"**{alert_row['product_line']}**")
         st.write(alert_row["risk_line"])
-        st.caption(f"Confidence: {_CONFIDENCE_LABEL.get(alert_row['priority'], 'Unknown')}")
+        st.caption(f"Confidence: {_CONFIDENCE_LABEL.get(alert_row['match_confidence'], 'Unknown')}")
         st.write(alert_row["identifiers_line"])
         st.write(alert_row["action_line"])
         st.caption(alert_row["match_reasoning"])

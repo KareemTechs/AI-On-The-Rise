@@ -13,7 +13,7 @@ the "what would we tell the user" step, kept independent of the "how do we deliv
 
 from dataclasses import dataclass
 
-from recallradar.matching import MatchResult
+from recallradar.matching import MatchConfidence, MatchResult
 from recallradar.priority import PriorityTier, score_priority
 
 # Only these tiers produce a user-facing alert at all — SUPPRESSED (no real match) never
@@ -31,6 +31,7 @@ _TIER_HEADLINE = {
 @dataclass
 class Alert:
     priority: PriorityTier
+    match_confidence: MatchConfidence
     headline: str
     product_line: str
     risk_line: str
@@ -107,6 +108,7 @@ def build_alert(match: MatchResult) -> Alert | None:
 
     return Alert(
         priority=priority,
+        match_confidence=match.confidence,
         headline=_TIER_HEADLINE[priority],
         product_line=product_line,
         risk_line=risk_line,
